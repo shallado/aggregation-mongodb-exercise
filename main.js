@@ -435,3 +435,10 @@ db.friends.aggregate([{
   }
 }]);
 
+// ------------- Understanding the $unwind Stage ---------------------
+// friends collection
+
+// take the hobbies field array for each document and give me each value as a separate document
+db.friends.aggregate([{
+  $unwind: '$hobbies'
+}]);
