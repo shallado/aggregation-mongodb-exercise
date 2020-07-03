@@ -442,3 +442,159 @@ db.friends.aggregate([{
 db.friends.aggregate([{
   $unwind: '$hobbies'
 }]);
+
+// ------------- Eliminating Duplicate Values ---------------------
+// friends collection
+
+// add a group stage aggregation to the previous aggregation located above
+  // group by age field and provide fieldName as age as well
+  // add a new field allHobbies will contain an array of hobbies for each age group and make sure no duplicates inside the array
+
+db.friends.aggregate([{
+  $unwind: '$hobbies'
+}, {
+  $group: {
+    _id: {
+      age: '$age'
+    },
+    allHobbies: {
+      $addToSet: '$hobbies'
+    }
+  }
+}]);
+
+// ------------- Using Projection with Arrays ---------------------
+// friends collection
+
+// give me document with no id field 
+// display examScores field so that it only display the first exam score info
+db.friends.aggregate([{
+  $project: {
+    _id: 0,
+    examScores: {
+      $slice: ['$examScores', 0, 1]
+    }
+  }
+}]);
+
+// give me a document with no id field
+// change examScores field so that it only displays that last 2 exam score
+db.friends.aggregate([{
+  $project: {
+    _id: 0,
+    examScores: {
+      $slice: ['$examScores', 1, 2]
+    }
+  }
+}]);
+
+// ------------- Getting the Length of Array ---------------------
+// friends collection
+
+// give me a documents with no id field
+// display a field with the name numScores with a value of the array length examScores
+db.friends.aggregate([{
+  $project: {
+    _id: 0,
+    numScores: {
+      $size: '$examScores'
+    }
+  }
+}]);
+
+// ------------- Using the $filter Operator ---------------------
+// friends collection
+
+// give document with no id field
+// display examScores field with scores higher than 60
+db.friends.aggregate([{
+  $project: {
+    _id: 0,
+    examScores: {
+      $filter: {
+        input: '$examScores',
+        as: 'examInfo',
+        cond: {
+          $gt: ['$$examInfo.score', 60]
+        }
+      }
+    }
+  }
+}]);
+
+// ------------- Applying Multiple Operations to our Array ---------------------
+// friends collection
+
+// take the examScores field array for each document and give me each value as a separate document
+// display only these fields _id, name, age, score value is the score from the examScores field 
+// sort with the field score in descending order
+// group by id, display a field named name with a value of the first document in the group with name field value, display a field with maxScore with a value of the highest score
+// sort by maxScore field in descending order
+
+db.friends.aggregate([{
+  $unwind: '$examScores'
+}, {
+  $project: {
+    name: 1,
+    age: 1,
+    score: '$examScores.score'
+  }
+}, {
+  $sort: {
+    score: -1
+  }
+}, {
+  $group: {
+    _id: '$_id',
+    name: {
+      $first: '$name'
+    },
+    maxScore: {
+      $max: '$score'
+    }
+  }
+}, {
+  $sort: {
+    maxScore: -1
+  }
+}]);
+
+// ------------- Understanding $bucket ---------------------
+// persons collection
+
+// give me an output where it shows the distribution of people in age groups of 18, 30, 40, 50, 60, 120
+// fields are 
+  // _id with value is the distribution numbers above 
+  // numPersons value total people in the age group
+  // averageAge value avg age of people in that age group
+
+db.persons.aggregate([{
+  $bucket: {
+    groupBy: '$dob.age',
+    boundaries: [18, 30, 40, 50, 60, 120],
+    output: {
+      numPersons: {
+        $sum: 1
+      },
+      averageAge: {
+        $avg: '$dob.age'
+      }
+    }
+  }
+}]);
+
+// perform that same aggregation but a different way
+db.persons.aggregate([{
+  $bucketAuto: {
+    groupBy: '$dob.age',
+    buckets: 5,
+    output: {
+      numPersons: {
+        $sum: 1
+      },
+      averageAge: {
+        $avg: '$dob.age'
+      }
+    }
+  }
+}]);
