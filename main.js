@@ -14,7 +14,7 @@ db.persons.aggregate([{
 // persons collection
 
 // add to the previous query and group the documents by state
-// give me the total of people for each state 
+// give me the total of people for each state
 
 db.persons.aggregate([{
   $match: {
@@ -39,7 +39,7 @@ db.persons.find({
 // ------------- Diving Deeper Into the Group Stage ---------------------
 // persons collection
 
-// build off the previous aggregation and add the sort stage to the aggregation pipeline 
+// build off the previous aggregation and add the sort stage to the aggregation pipeline
 // sort by totalPersons field in descending order
 db.persons.aggregate([{
   $match: {
@@ -123,7 +123,7 @@ db.persons.aggregate([{
 
 // repeat the same aggregation above but have the field fullName containing first and last name with only first letters being capitalized for each
 // try to implementing two ways to capitalize first letter of first and last name
-// one just using aggregation and mongo operators 
+// one just using aggregation and mongo operators
 // one with using one javascript string method
 db.persons.aggregate([{
   $project: {
@@ -326,3 +326,92 @@ db.persons.aggregate([{
     }
   }
 }]);
+
+// ------------- Understanding the $isoWeekYear Operator ---------------------
+// persons collection
+
+// work with the same aggregation operation from the previous exercise
+// add a group stage
+// group by birth date display value in the field birthDate
+// have a new field numPersons value should be total people born each year
+// add a sort stage
+// sort by numPersons field in descending order
+
+db.persons.aggregate([{
+    $project: {
+      _id: 0,
+      name: 1,
+      email: 1,
+      gender: 1,
+      birthDate: {
+        $convert: {
+          input: '$dob.date',
+          to: 'date',
+        },
+      },
+      age: '$dob.age',
+      location: {
+        type: 'Point',
+        coordinates: [{
+            $convert: {
+              input: '$location.coordinates.longitude',
+              to: 'double',
+              onError: 0.0,
+              onNull: 0.0,
+            },
+          },
+          {
+            $convert: {
+              input: '$location.coordinates.latitude',
+              to: 'double',
+              onError: 0.0,
+              onNull: 0.0,
+            },
+          },
+        ],
+      },
+    },
+  },
+  {
+    $project: {
+      email: 1,
+      location: 1,
+      gender: 1,
+      birthDate: 1,
+      age: 1,
+      fullName: {
+        $concat: [{
+            $toUpper: {
+              $substrCP: ['$name.first', 0, 1],
+            },
+          },
+          {
+            $substrCP: ['$name.first', 1, '$name.first'.length],
+          },
+          ' ',
+          {
+            $toUpper: {
+              $substrCP: ['$name.last', 0, 1],
+            },
+          },
+          {
+            $substrCP: ['$name.last', 1, '$name.last'.length],
+          },
+        ],
+      },
+    },
+  },
+  {
+    $group: {
+      _id: {
+        birthDate: {
+          $isoWeekYear: '$birthDate'
+        },
+      },
+      numPersons: {
+        $sum: 1,
+      },
+    },
+  },
+]);
+
