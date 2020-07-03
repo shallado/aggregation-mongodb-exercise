@@ -415,3 +415,23 @@ db.persons.aggregate([{
   },
 ]);
 
+// ------------- Pushing Elements Into Newly Created Arrays -------------------
+// friends collection
+
+// insert the data in the array-data.json file
+
+// use group stage aggregation
+  // group by age field and provide fieldName as age as well
+  // add a new field allHobbies will contain an array of hobbies for each age group
+
+db.friends.aggregate([{
+  $group: {
+    _id: {
+      age: '$age'
+    },
+    allHobbies: {
+      $push: '$hobbies'
+    }
+  }
+}]);
+
