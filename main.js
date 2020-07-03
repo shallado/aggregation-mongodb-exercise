@@ -598,3 +598,129 @@ db.persons.aggregate([{
     }
   }
 }]);
+
+// ------------- Diving Into Additional Stages ---------------------
+// persons collection
+
+// give me people with gender being male
+// do not display _id field
+// display name field with value of full name, birthDate with a value of date,
+// sort by birthDate in ascending order
+// limit 10 results
+db.persons.aggregate([{
+  $match: {
+    gender: 'male'
+  }
+}, {
+  $project: {
+    _id: 0,
+    name: {
+      $concat: ['$name.first', ' ', '$name.last']
+    },
+    birthDate: {
+      $toDate: '$dob.date'
+    }
+  }
+}, {
+  $sort: {
+    birthDate: 1
+  }
+}, {
+  $limit: 10
+}]);
+
+// repeat the same aggregation but skip the first 10 documents
+db.persons.aggregate([{
+  $match: {
+    gender: 'male'
+  }
+}, {
+  $project: {
+    _id: 0,
+    name: {
+      $concat: ['$name.first', ' ', '$name.last']
+    },
+    birthDate: {
+      $toDate: '$dob.date'
+    }
+  }
+}, {
+  $sort: {
+    birthDate: 1
+  }
+}, {
+  $skip: 10
+}, {
+  $limit: 10
+}]);
+
+// ------------- Writing Pipeline Results Into a New Collection ----------------
+// persons collection
+
+// do not display the field id
+// display the field email, birthDate with a value of dob date converted to date, age with a value of age from dob field, geoJSON object with long and lat, fullName with value of first and last name with first letters being capitalized
+// this aggregations saved to a new collection named transformedPersons
+db.persons.aggregate([{
+  $project: {
+    _id: 0,
+    email: 1,
+    birthDate: {
+      $toDate: '$dob.date'
+    },
+    age: '$dob.age',
+    location: {
+      type: 'Point',
+      coordinates: [{
+        $toDouble: '$location.coordinates.longitude'
+      }, {
+        $toDouble: '$location.coordinates.latitude'
+      }]
+    },
+    fullName: {
+      $concat: [{
+        $toUpper: {
+          $substrCP: ['$name.first', 0, 1]
+        }
+      }, {
+        $substrCP: ['$name.first', 1, { $strLenCP: '$name.first' }]
+      }, 
+      ' ', {
+        $toUpper: {
+          $substrCP: ['$name.last', 0, 1]
+        }
+      }, {
+        $substrCP: ['$name.last', 1, { $strLenCP: '$name.last' }]
+      }]
+    }
+  }
+}, {
+  $out: 'transformedPersons'
+}]);
+
+// ------------- Working with the $geoNear Stage -------------------
+// transformedPersons collection
+
+// index the location field to be able to use geoJSON objects
+
+// give me people that are near coordinates -18.4, -42.8
+  // that farthest a person can be from the coordinates is 1000000
+  // give me only people who's age is greater than 30
+// limit 10
+
+db.transformedPersons.aggregate([{
+  $geoNear: {
+    near: {
+      type: 'Point',
+      coordinates: [-18.4, -42.8]
+    },
+    distanceField: 'distance',
+    maxDistance: 1000000,
+    query: {
+      age: {
+        $gt: 30
+      }
+    }
+  }
+}, {
+  $limit: 10
+}]);
